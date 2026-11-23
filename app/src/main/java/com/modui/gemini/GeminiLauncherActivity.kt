@@ -317,8 +317,8 @@ class GeminiLauncherActivity : AppCompatActivity() {
                 isLooping = true
                 setVolume(0f, 0f)
                 setOnVideoSizeChangedListener { _, width, height ->
-                    videoWidth = width
-                    videoHeight = height
+                    this@GeminiLauncherActivity.videoWidth = width
+                    this@GeminiLauncherActivity.videoHeight = height
                     updateVideoCenterCropTransform()
                 }
                 setOnPreparedListener { player ->
