@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var STYLE_ID = 'mod-ui-liquid-glass-style';
+  var STYLE_ID = 'mod-ui-style';
 
   var TRANSPARENT_SELECTORS = [
     'html',
@@ -10,6 +10,7 @@
     'chat-app',
     'main',
     'bard-sidenav-container',
+    'bard-sidenav-content',
     'mat-sidenav-container',
     'mat-sidenav-content',
     '.mat-drawer-container',
@@ -19,6 +20,8 @@
     '.chat-history',
     '.chat-history-scroll-container',
     'infinite-scroller',
+    '.conversation-container',
+    '.input-area-container',
     'input-container',
     '.bottom-container',
     'bard-header',
@@ -313,6 +316,8 @@
 
     var blurPx = typeof config.blurPx === 'number' ? config.blurPx : 20;
     var overlayDim = typeof config.overlayDim === 'number' ? config.overlayDim : 0.35;
+    var safeTopPx = typeof config.safeTopPx === 'number' ? config.safeTopPx : 0;
+    var safeBottomPx = typeof config.safeBottomPx === 'number' ? config.safeBottomPx : 0;
     var isVideoMode = config.bgMode === 'NATIVE_VIDEO';
     var bgUrl = config.bgUrl || '';
     var ambientOn = !!config.ambientGlow;
@@ -337,18 +342,30 @@
       ? 'conic-gradient(from var(--led-angle), ' + closedStops + ')'
       : firstColor;
 
-    if (root) {
-      root.style.setProperty('--mod-glass-blur', blurPx + 'px');
-      root.style.setProperty('--mod-overlay-dim', String(overlayDim));
-      root.style.setProperty('--led-single-color', firstColor);
-      root.style.setProperty('--led-single-rgb', hexToRgbString(firstColor));
-      root.style.setProperty('--led-stops', closedStops);
-      root.style.setProperty('--led-gradient', ledGradientValue);
+    // Only update CSS custom properties when settings/colors actually changed
+    var configSig = config.sig || (
+      blurPx + '|' + overlayDim + '|' + safeTopPx + '|' + safeBottomPx + '|' +
+      isVideoMode + '|' + bgUrl + '|' + ambientOn + '|' + closedStops + '|' + !!config.hideSuggestions
+    );
+    var varsNeedUpdate = window.__MOD_UI_APPLIED_SIG__ !== configSig;
 
-      if (!isVideoMode && bgUrl) {
-        root.style.setProperty('--mod-bg-image', 'url("' + bgUrl + '")');
-      } else {
-        root.style.setProperty('--mod-bg-image', 'none');
+    if (root) {
+      if (varsNeedUpdate) {
+        root.style.setProperty('--mod-glass-blur', blurPx + 'px');
+        root.style.setProperty('--mod-overlay-dim', String(overlayDim));
+        root.style.setProperty('--mod-safe-top', safeTopPx + 'px');
+        root.style.setProperty('--mod-safe-bottom', safeBottomPx + 'px');
+        root.style.setProperty('--led-single-color', firstColor);
+        root.style.setProperty('--led-single-rgb', hexToRgbString(firstColor));
+        root.style.setProperty('--led-stops', closedStops);
+        root.style.setProperty('--led-gradient', ledGradientValue);
+
+        if (!isVideoMode && bgUrl) {
+          root.style.setProperty('--mod-bg-image', 'url("' + bgUrl + '")');
+        } else {
+          root.style.setProperty('--mod-bg-image', 'none');
+        }
+        window.__MOD_UI_APPLIED_SIG__ = configSig;
       }
       root.classList.toggle('mod-webview-bg', !isVideoMode && !!bgUrl);
       root.classList.toggle('mod-video-mode', isVideoMode);
@@ -380,7 +397,7 @@
 
   function removeModUi() {
     window.__MOD_UI_ACTIVE__ = false;
-    window.__modUiInjected = false;
+    window.__MOD_UI_APPLIED_SIG__ = null;
     clearHiddenSuggestions();
 
     var existing = document.getElementById(STYLE_ID);
@@ -418,6 +435,8 @@
     if (root) {
       root.style.removeProperty('--mod-glass-blur');
       root.style.removeProperty('--mod-overlay-dim');
+      root.style.removeProperty('--mod-safe-top');
+      root.style.removeProperty('--mod-safe-bottom');
       root.style.removeProperty('--mod-bg-image');
       root.style.removeProperty('--led-single-color');
       root.style.removeProperty('--led-single-rgb');

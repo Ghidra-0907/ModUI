@@ -54,7 +54,8 @@ class GeminiLauncherActivity : AppCompatActivity() {
     private var activeVideoKey: String? = null
     private var videoWidth: Int = 0
     private var videoHeight: Int = 0
-    private var lastInjectedUrl: String? = null
+    private var safeTopDp: Int = 0
+    private var safeBottomDp: Int = 0
     private var lastConfigSignature: String? = null
 
     private val modCssBase64: String by lazy {
@@ -152,24 +153,20 @@ class GeminiLauncherActivity : AppCompatActivity() {
         binding.viewDimOverlay.isFocusable = false
         binding.viewDimOverlay.isFocusableInTouchMode = false
 
+        // Keep WebView full-bleed edge-to-edge (padding = 0) so there are zero seams at
+        // the Status Bar or Navigation Bar; safe insets are forwarded to CSS variables instead.
+        binding.webViewContainer.updatePadding(left = 0, top = 0, right = 0, bottom = 0)
+
         ViewCompat.setOnApplyWindowInsetsListener(binding.launcherRoot) { _, insets ->
             val sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val density = resources.displayMetrics.density.coerceAtLeast(1f)
+            val newTopDp = (sysBars.top / density + 0.5f).toInt()
+            val newBottomDp = (sysBars.bottom / density + 0.5f).toInt()
 
-            // Keep fixed padding strictly for system bars (status/navigation bars).
-            // Never resize WebView dynamically with IME insets; windowSoftInputMode="adjustPan"
-            // smoothly pans the input box above the keyboard without reflow or blur.
-            val container = binding.webViewContainer
-            if (container.paddingLeft != sysBars.left ||
-                container.paddingTop != sysBars.top ||
-                container.paddingRight != sysBars.right ||
-                container.paddingBottom != sysBars.bottom
-            ) {
-                container.updatePadding(
-                    left = sysBars.left,
-                    top = sysBars.top,
-                    right = sysBars.right,
-                    bottom = sysBars.bottom
-                )
+            if (newTopDp != safeTopDp || newBottomDp != safeBottomDp) {
+                safeTopDp = newTopDp
+                safeBottomDp = newBottomDp
+                syncModUiIfConfigChanged()
             }
 
             val pbLp = binding.progressBar.layoutParams as? ViewGroup.MarginLayoutParams
@@ -498,12 +495,12 @@ class GeminiLauncherActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                injectOrClearModUi(view, url, forceUpdate = false)
+                injectOrClearModUi(view, url)
             }
 
             override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
                 super.doUpdateVisitedHistory(view, url, isReload)
-                injectOrClearModUi(view, url, forceUpdate = false)
+                injectOrClearModUi(view, url)
             }
         }
 
@@ -608,7 +605,9 @@ class GeminiLauncherActivity : AppCompatActivity() {
             prefManager.ledColors.joinToString(","),
             prefManager.isHideSuggestionsEnabled,
             bgMode,
-            bgToken
+            bgToken,
+            safeTopDp,
+            safeBottomDp
         ).joinToString("|")
     }
 
@@ -617,7 +616,7 @@ class GeminiLauncherActivity : AppCompatActivity() {
         if (currentUrl.isNullOrBlank()) return
         val currentSig = buildCurrentConfigSignature()
         if (currentSig != lastConfigSignature) {
-            injectOrClearModUi(binding.webView, currentUrl, forceUpdate = true)
+            injectOrClearModUi(binding.webView, currentUrl)
         }
     }
 
@@ -713,31 +712,16 @@ class GeminiLauncherActivity : AppCompatActivity() {
         }.getOrDefault("image/jpeg")
     }
 
-    private fun injectOrClearModUi(
-        webView: WebView?,
-        url: String?,
-        forceUpdate: Boolean = false
-    ) {
+    private fun injectOrClearModUi(webView: WebView?, url: String?) {
         webView ?: return
         if (!isGeminiHost(url)) return
 
-        val normalizedUrl = url ?: return
         val configSignature = buildCurrentConfigSignature()
-
-        // Inject strictly once per URL unless user actually changed Mod UI settings
-        if (!forceUpdate &&
-            lastInjectedUrl == normalizedUrl &&
-            lastConfigSignature == configSignature
-        ) {
-            return
-        }
-
-        lastInjectedUrl = normalizedUrl
         lastConfigSignature = configSignature
 
         if (!prefManager.isModEnabled) {
             webView.evaluateJavascript(
-                "window.__modUiInjected = false; if (window.__MOD_UI_REMOVE__) { window.__MOD_UI_REMOVE__(); }",
+                "if (window.__MOD_UI_REMOVE__) { window.__MOD_UI_REMOVE__(); }",
                 null
             )
             return
@@ -759,43 +743,39 @@ class GeminiLauncherActivity : AppCompatActivity() {
         } else {
             "https://gemini.google.com$VIRTUAL_BG_PATH?v=${buildBgCacheToken()}"
         }
-        val escapedKey = "${normalizedUrl}::$configSignature".replace("'", "")
+        val safeSig = configSignature.replace("'", "")
 
         val injectionJs = """
             (function() {
-              var injectKey = '$escapedKey';
-              if (!$forceUpdate && window.__modUiInjected === injectKey && document.getElementById('mod-ui-liquid-glass-style')) {
-                return;
-              }
-              window.__modUiInjected = injectKey;
-              var styleId = 'mod-ui-liquid-glass-style';
-              var b64 = '$modCssBase64';
-              var cssText;
-              try {
-                var bin = atob(b64);
-                var bytes = new Uint8Array(bin.length);
-                for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-                cssText = new TextDecoder('utf-8').decode(bytes);
-              } catch (e) {
-                cssText = atob(b64);
-              }
+              var styleId = 'mod-ui-style';
               var styleEl = document.getElementById(styleId);
               if (!styleEl) {
+                var b64 = '$modCssBase64';
+                var cssText;
+                try {
+                  var bin = atob(b64);
+                  var bytes = new Uint8Array(bin.length);
+                  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                  cssText = new TextDecoder('utf-8').decode(bytes);
+                } catch (e) {
+                  cssText = atob(b64);
+                }
                 styleEl = document.createElement('style');
                 styleEl.id = styleId;
+                styleEl.textContent = cssText;
                 (document.head || document.documentElement).appendChild(styleEl);
               }
-              if (styleEl.textContent !== cssText) {
-                styleEl.textContent = cssText;
-              }
               window.__MOD_UI_CONFIG__ = {
+                sig: '$safeSig',
                 blurPx: $blurPx,
                 overlayDim: $overlayDim,
                 ambientGlow: $ambientGlow,
                 ledColors: $ledColorsJsArray,
                 hideSuggestions: $hideSuggestions,
                 bgMode: '$bgMode',
-                bgUrl: '$bgUrl'
+                bgUrl: '$bgUrl',
+                safeTopPx: $safeTopDp,
+                safeBottomPx: $safeBottomDp
               };
               if (!window.__MOD_UI_SCRIPT_LOADED__) {
                 window.__MOD_UI_SCRIPT_LOADED__ = true;

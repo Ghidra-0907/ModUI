@@ -46,6 +46,8 @@
   --mod-glass-blur: 20px;
   --mod-overlay-dim: 0.35;
   --mod-bg-image: none;
+  --mod-safe-top: 0px;
+  --mod-safe-bottom: 0px;
 
   /* Dynamic LED variables (populated by mod_script.js from SharedPreferences) */
   --led-single-color: #38bdf8;
@@ -125,10 +127,13 @@ body.mod-video-mode::after {
 }
 
 /* Transparent structural containers */
+html,
+body,
 app-root,
 chat-app,
 main,
 bard-sidenav-container,
+bard-sidenav-content,
 mat-sidenav-container,
 mat-sidenav-content,
 .mat-drawer-container,
@@ -140,6 +145,7 @@ chat-window-content,
 .chat-history-scroll-container,
 infinite-scroller,
 .conversation-container,
+.input-area-container,
 input-container,
 .bottom-container,
 .input-gradient,
@@ -155,6 +161,22 @@ modular-zero-state {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
+}
+
+/* Edge-to-Edge safe spacing so WebView fills 100% of screen with zero seams */
+bard-sidenav-container,
+chat-app:not(:has(bard-sidenav-container)) {
+  box-sizing: border-box !important;
+  padding-top: var(--mod-safe-top, 0px) !important;
+  padding-bottom: var(--mod-safe-bottom, 0px) !important;
+}
+
+bard-sidenav,
+mat-sidenav,
+mat-drawer {
+  box-sizing: border-box !important;
+  padding-top: var(--mod-safe-top, 0px) !important;
+  padding-bottom: var(--mod-safe-bottom, 0px) !important;
 }
 
 /* Remove opaque gradient scrims above the input bar & below the header */
