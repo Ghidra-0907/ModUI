@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ModUI" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/accent_primary</item>
+        <item name="colorOnPrimary">@color/accent_on_primary</item>
+        <item name="colorPrimaryContainer">@color/accent_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/accent_on_primary_container</item>
+
+        <item name="colorSecondary">@color/accent_blue</item>
+        <item name="colorOnSecondary">@color/accent_on_blue</item>
+        <item name="colorSecondaryContainer">@color/accent_blue_container</item>
+        <item name="colorOnSecondaryContainer">@color/text_primary</item>
+
+        <item name="android:colorBackground">@color/bg_obsidian</item>
+        <item name="colorSurface">@color/bg_obsidian</item>
+        <item name="colorSurfaceContainer">@color/surface_card</item>
+        <item name="colorSurfaceContainerHigh">@color/surface_card_elevated</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/surface_stroke</item>
+        <item name="colorOutlineVariant">@color/surface_stroke_subtle</item>
+
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.ModUI.GeminiLauncher" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:windowBackground">@color/gemini_default_dark</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Widget.ModUI.SegmentedButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="strokeColor">@color/surface_stroke</item>
+        <item name="backgroundTint">@color/selector_tab_bg</item>
+        <item name="android:textColor">@color/selector_tab_text</item>
+        <item name="iconTint">@color/selector_tab_text</item>
+        <item name="cornerRadius">14dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+</resources>

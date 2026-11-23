@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mod UI</string>
+    <string name="app_subtitle">Liquid Glass cho Google Gemini</string>
+    <string name="gemini_title">Google Gemini</string>
+    <string name="gemini_url_subtitle">gemini.google.com/app</string>
+    <string name="gemini_shortcut_label">Gemini</string>
+    <string name="gemini_shortcut_long_label">Google Gemini (Mod UI)</string>
+
+    <string name="label_enable_mod">Bật Mod UI</string>
+    <string name="btn_create_shortcut">Tạo lối tắt Gemini ra màn hình chính</string>
+
+    <string name="section_wallpaper">Hình nền Liquid Glass</string>
+    <string name="tab_static_image">Ảnh Tĩnh</string>
+    <string name="tab_animated_media">Ảnh Động</string>
+    <string name="add_static_image">Chọn ảnh</string>
+    <string name="add_animated_media">GIF / MP4</string>
+
+    <string name="section_mod_effects">Chỉnh sửa giao diện Mod</string>
+    <string name="label_glass_blur">Độ mờ kính (Glass Blur)</string>
+    <string name="label_overlay_dim">Độ tối lớp phủ (Overlay Dim)</string>
+    <string name="desc_overlay_dim">Giúp chữ trắng luôn nổi bật trên nền sáng</string>
+    <string name="label_ambient_glow">Viền phát sáng (Ambient Glow)</string>
+    <string name="desc_ambient_glow">Hiệu ứng viền phát sáng cho khung nhập liệu \"Hỏi Gemini\"</string>
+    <string name="label_hide_suggestions">Ẩn câu hỏi gợi ý</string>
+    <string name="desc_hide_suggestions">Ẩn các thẻ gợi ý ở màn hình chính của Gemini</string>
+
+    <string name="btn_save_and_open">LƯU &amp; MỞ GEMINI</string>
+
+    <string name="msg_shortcut_unsupported">Trình khởi chạy của bạn không hỗ trợ tạo lối tắt tự động</string>
+    <string name="msg_shortcut_requested">Đang yêu cầu thêm lối tắt Gemini ra màn hình chính…</string>
+    <string name="msg_static_saved">Đã lưu hình nền tĩnh tùy chỉnh</string>
+    <string name="msg_gif_saved">Đã lưu hình nền động GIF tùy chỉnh</string>
+    <string name="msg_video_saved">Đã lưu video nền MP4 tùy chỉnh</string>
+    <string name="msg_import_failed">Không thể đọc tệp đã chọn. Vui lòng thử lại.</string>
+    <string name="msg_settings_saved">Đã lưu cấu hình Mod UI</string>
+
+    <!-- Shizuku Card -->
+    <string name="shizuku_title_disconnected">Shizuku chưa kết nối</string>
+    <string name="shizuku_title_connected">Shizuku đã kết nối</string>
+    <string name="shizuku_subtitle_not_running">Khởi chạy Shizuku hoặc cấp quyền để kết nối</string>
+    <string name="shizuku_subtitle_need_permission">Dịch vụ Shizuku đang chạy — cần cấp quyền truy cập</string>
+    <string name="shizuku_badge_connected">Đã kết nối</string>
+    <string name="shizuku_badge_disconnected">Chưa kết nối</string>
+    <string name="shizuku_badge_need_permission">Chưa cấp quyền</string>
+    <string name="btn_shizuku_grant">Cấp quyền Shizuku</string>
+    <string name="btn_shizuku_open">Mở Shizuku</string>
+    <string name="msg_shizuku_not_installed">Chưa cài đặt ứng dụng Shizuku trên thiết bị</string>
+    <string name="msg_shizuku_not_running">Dịch vụ Shizuku chưa chạy. Vui lòng mở Shizuku để khởi động trước.</string>
+    <string name="msg_shizuku_pre_v11">Phiên bản Shizuku không được hỗ trợ. Vui lòng cập nhật Shizuku mới hơn.</string>
+    <string name="msg_shizuku_granted">Đã kết nối và cấp quyền Shizuku thành công</string>
+    <string name="msg_shizuku_denied">Quyền Shizuku đã bị từ chối</string>
+</resources>

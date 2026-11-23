@@ -1,0 +1,250 @@
+/* ==========================================================================
+   Mod UI — Liquid Glass Theme for Google Gemini (gemini.google.com/app)
+   ========================================================================== */
+
+:root {
+  --mod-glass-blur: 16px;
+  --mod-glass-bg: rgba(18, 22, 32, 0.42);
+  --mod-glass-bg-strong: rgba(14, 17, 26, 0.62);
+  --mod-glass-user-bubble: rgba(168, 199, 250, 0.16);
+  --mod-glass-border: rgba(255, 255, 255, 0.17);
+  --mod-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --mod-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.30);
+
+  /* Override Gemini Material / GM3 surface tokens so Angular inherits transparency */
+  --gem-sys-color--surface: transparent !important;
+  --gem-sys-color--surface-container: rgba(20, 24, 34, 0.45) !important;
+  --gem-sys-color--surface-container-low: transparent !important;
+  --gem-sys-color--surface-container-high: rgba(24, 30, 44, 0.54) !important;
+  --gem-sys-color--surface-container-highest: rgba(30, 36, 52, 0.62) !important;
+  --bard-color-surface: transparent !important;
+  --bard-color-surface-container: rgba(20, 24, 34, 0.45) !important;
+  --bard-color-main-container-background: transparent !important;
+  --mat-sidenav-content-background-color: transparent !important;
+  --mat-sidenav-container-background-color: transparent !important;
+}
+
+/* 1. 100% Transparent Default Structural Backgrounds */
+html,
+body,
+app-root,
+chat-app,
+main,
+bard-sidenav-container,
+mat-sidenav-container,
+mat-sidenav-content,
+.mat-drawer-container,
+.mat-drawer-content,
+chat-window,
+chat-window-content,
+.chat-window,
+.chat-history,
+.chat-history-scroll-container,
+infinite-scroller,
+.conversation-container,
+.input-area-container,
+input-container,
+.bottom-container,
+.input-gradient,
+.chat-window-bottom-gradient,
+bard-header,
+top-bar-actions,
+.top-bar-actions,
+header,
+.boqOnegoogleliteOgbOneGoogleBar,
+zero-state-v2,
+.zero-state-container {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Remove opaque fade-out gradient masks above input bar & below header */
+.input-area-container::before,
+.input-area-container::after,
+input-container::before,
+input-container::after,
+.bottom-container::before,
+.bottom-container::after,
+chat-window::before,
+chat-window::after,
+.chat-history::before,
+.chat-history::after {
+  background: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure crisp light text over dynamic backgrounds */
+body,
+chat-window,
+.chat-history,
+.model-response-text,
+.markdown,
+.query-text,
+rich-textarea .ql-editor {
+  color: #f3f6fc !important;
+}
+
+/* 2. Liquid Glass — Input Area ("Hỏi Gemini") */
+input-area-v2,
+.text-input-field,
+input-area-v2 .input-area {
+  background: var(--mod-glass-bg) !important;
+  backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
+  border: 1px solid var(--mod-glass-border) !important;
+  border-radius: 28px !important;
+  box-shadow: var(--mod-glass-shadow), var(--mod-glass-highlight) !important;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease !important;
+}
+
+/* Keep nested inner textarea layers transparent to prevent double-blur artifacts */
+input-area-v2 .text-input-field,
+input-area-v2 .input-area,
+.text-input-field rich-textarea,
+rich-textarea,
+rich-textarea .ql-container,
+rich-textarea .ql-editor,
+.text-input-field_textarea-wrapper,
+.input-buttons-wrapper-bottom {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* If Gemini renders standalone .text-input-field outside input-area-v2 */
+:not(input-area-v2) > .text-input-field {
+  background: var(--mod-glass-bg) !important;
+  backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
+  border: 1px solid var(--mod-glass-border) !important;
+  border-radius: 28px !important;
+  box-shadow: var(--mod-glass-shadow), var(--mod-glass-highlight) !important;
+}
+
+/* Fallback if rich-textarea is rendered standalone */
+:not(input-area-v2):not(.text-input-field) > rich-textarea {
+  background: var(--mod-glass-bg) !important;
+  backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
+  border: 1px solid var(--mod-glass-border) !important;
+  border-radius: 24px !important;
+}
+
+rich-textarea .ql-editor.ql-blank::before {
+  color: rgba(243, 246, 252, 0.68) !important;
+}
+
+/* 3. Liquid Glass — Navigation Sidebar */
+bard-sidenav,
+mat-sidenav,
+.mat-drawer,
+.sidenav-with-history-container,
+side-navigation-content {
+  background: var(--mod-glass-bg-strong) !important;
+  backdrop-filter: blur(calc(var(--mod-glass-blur) + 4px)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(calc(var(--mod-glass-blur) + 4px)) saturate(180%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 8px 0 36px rgba(0, 0, 0, 0.42) !important;
+}
+
+bard-sidenav .sidenav-with-history-container,
+bard-sidenav side-navigation-content {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-right: none !important;
+  box-shadow: none !important;
+}
+
+/* 4. Liquid Glass — User Chat Bubbles */
+user-query .user-query-bubble-with-background,
+user-query .query-content,
+.user-query-bubble-with-background,
+user-query {
+  border-radius: 22px 22px 6px 22px !important;
+}
+
+user-query .user-query-bubble-with-background,
+.user-query-bubble-with-background {
+  background: var(--mod-glass-user-bubble) !important;
+  backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.20) !important;
+}
+
+/* Subtle Liquid Glass for Code Blocks, Menus, Dialogs & Model Cards */
+code-block,
+.code-block,
+pre code,
+.mat-mdc-menu-panel,
+.mat-mdc-dialog-surface,
+.cdk-overlay-pane .mat-mdc-menu-panel,
+.mat-bottom-sheet-container {
+  background: rgba(16, 20, 30, 0.66) !important;
+  backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 18px !important;
+}
+
+/* Subtle glass pill for action chips & header pills */
+.new-chat-button,
+bard-mode-switcher button,
+.pill-ui-logo-container {
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(calc(var(--mod-glass-blur) * 0.75)) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(calc(var(--mod-glass-blur) * 0.75)) saturate(160%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+/* 5. Optional Feature: Ambient Glow on Input Box */
+@keyframes modUiAmbientGlow {
+  0%, 100% {
+    border-color: rgba(168, 199, 250, 0.62);
+    box-shadow:
+      0 0 0 1px rgba(168, 199, 250, 0.45),
+      0 0 20px rgba(138, 180, 248, 0.36),
+      0 0 42px rgba(255, 183, 132, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+  50% {
+    border-color: rgba(255, 183, 132, 0.68);
+    box-shadow:
+      0 0 0 1px rgba(255, 183, 132, 0.50),
+      0 0 24px rgba(195, 155, 255, 0.40),
+      0 0 48px rgba(138, 180, 248, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.30);
+  }
+}
+
+body.mod-ambient-glow input-area-v2,
+body.mod-ambient-glow :not(input-area-v2) > .text-input-field,
+html.mod-ambient-glow input-area-v2,
+html.mod-ambient-glow :not(input-area-v2) > .text-input-field {
+  animation: modUiAmbientGlow 4.5s ease-in-out infinite !important;
+}
+
+/* 6. Optional Feature: Hide Suggestion Prompts on Home Screen */
+body.mod-hide-suggestions modular-zero-state-chips,
+body.mod-hide-suggestions zero-state-v2 .suggestion-chips,
+body.mod-hide-suggestions .suggestion-chips,
+body.mod-hide-suggestions .suggestion-chips-container,
+body.mod-hide-suggestions .suggested-prompts-container,
+body.mod-hide-suggestions .prompt-suggestions,
+body.mod-hide-suggestions .zero-state-cards,
+body.mod-hide-suggestions .card-carousel,
+body.mod-hide-suggestions .starter-prompts,
+body.mod-hide-suggestions .intent-card-container,
+body.mod-hide-suggestions [data-test-id="zero-state-suggestions"],
+body.mod-hide-suggestions [data-test-id="suggested-prompts"],
+html.mod-hide-suggestions modular-zero-state-chips,
+html.mod-hide-suggestions .suggestion-chips-container,
+html.mod-hide-suggestions .suggested-prompts-container,
+html.mod-hide-suggestions .zero-state-cards,
+html.mod-hide-suggestions .card-carousel {
+  display: none !important;
+}
