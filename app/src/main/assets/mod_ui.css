@@ -58,7 +58,6 @@
   --mod-video-glass-bg: linear-gradient(135deg, rgba(25, 35, 65, 0.68), rgba(15, 20, 40, 0.78));
   --mod-sidebar-glass-bg: rgba(12, 18, 34, 0.82);
   --mod-sidebar-video-bg: linear-gradient(160deg, rgba(16, 24, 46, 0.88), rgba(10, 14, 28, 0.94));
-  --mod-user-bubble-bg: rgba(36, 56, 104, 0.50);
   --mod-glass-border: rgba(255, 255, 255, 0.18);
   --mod-glass-inset: inset 0 1px 1px rgba(255, 255, 255, 0.25);
 
@@ -465,25 +464,26 @@ side-navigation-content,
 }
 
 /* ==========================================================================
-   4. Liquid Glass — User Chat Bubbles, Code Blocks & Overlays
+   4. Clean Lightweight User Chat Bubbles (No Liquid Glass) + Code Blocks & Menus
    ========================================================================== */
 
 user-query .user-query-bubble-with-background,
 .user-query-bubble-with-background {
-  background: var(--mod-user-bubble-bg) !important;
-  backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.20) !important;
-  border-radius: 22px 22px 6px 22px !important;
-  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.26), var(--mod-glass-inset) !important;
-}
-
-body.mod-video-mode user-query .user-query-bubble-with-background,
-body.mod-video-mode .user-query-bubble-with-background {
-  background: var(--mod-video-glass-bg) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.34), inset 0 1px 1px rgba(255, 255, 255, 0.25) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+user-query,
+.user-query-container,
+.query-text,
+user-query-content {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 code-block,

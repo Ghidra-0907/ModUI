@@ -43,7 +43,7 @@
             android:roundIcon="@mipmap/ic_gemini_shortcut"
             android:taskAffinity="com.modui.gemini.launcher"
             android:theme="@style/Theme.ModUI.GeminiLauncher"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustPan">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

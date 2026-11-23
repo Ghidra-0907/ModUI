@@ -54,6 +54,8 @@ class GeminiLauncherActivity : AppCompatActivity() {
     private var activeVideoKey: String? = null
     private var videoWidth: Int = 0
     private var videoHeight: Int = 0
+    private var lastInjectedUrl: String? = null
+    private var lastConfigSignature: String? = null
 
     private val modCssBase64: String by lazy {
         val rawCss = assets.open("mod_ui.css").bufferedReader().use { it.readText() }
@@ -96,14 +98,14 @@ class GeminiLauncherActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         applyVisualLayers()
-        syncModUiWithCurrentPage()
+        syncModUiIfConfigChanged()
     }
 
     override fun onResume() {
         super.onResume()
         binding.webView.onResume()
         applyVisualLayers()
-        syncModUiWithCurrentPage()
+        syncModUiIfConfigChanged()
         resumeVideoIfReady()
     }
 
@@ -152,22 +154,21 @@ class GeminiLauncherActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.launcherRoot) { _, insets ->
             val sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
-            val bottomInset = maxOf(sysBars.bottom, ime.bottom)
 
-            // Only update padding/margins when changed to avoid redundant relayouts
-            // that can interrupt WebView IME focus while the keyboard opens.
+            // Keep fixed padding strictly for system bars (status/navigation bars).
+            // Never resize WebView dynamically with IME insets; windowSoftInputMode="adjustPan"
+            // smoothly pans the input box above the keyboard without reflow or blur.
             val container = binding.webViewContainer
             if (container.paddingLeft != sysBars.left ||
                 container.paddingTop != sysBars.top ||
                 container.paddingRight != sysBars.right ||
-                container.paddingBottom != bottomInset
+                container.paddingBottom != sysBars.bottom
             ) {
                 container.updatePadding(
                     left = sysBars.left,
                     top = sysBars.top,
                     right = sysBars.right,
-                    bottom = bottomInset
+                    bottom = sysBars.bottom
                 )
             }
 
@@ -495,19 +496,14 @@ class GeminiLauncherActivity : AppCompatActivity() {
                 return true
             }
 
-            override fun onPageCommitVisible(view: WebView?, url: String?) {
-                super.onPageCommitVisible(view, url)
-                injectOrClearModUi(view, url)
-            }
-
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                injectOrClearModUi(view, url)
+                injectOrClearModUi(view, url, forceUpdate = false)
             }
 
             override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
                 super.doUpdateVisitedHistory(view, url, isReload)
-                injectOrClearModUi(view, url)
+                injectOrClearModUi(view, url, forceUpdate = false)
             }
         }
 
@@ -600,10 +596,28 @@ class GeminiLauncherActivity : AppCompatActivity() {
         return host == "gemini.google.com" || host.endsWith(".gemini.google.com")
     }
 
-    private fun syncModUiWithCurrentPage() {
+    private fun buildCurrentConfigSignature(): String {
+        val nativeVideo = isUsingNativeVideo()
+        val bgMode = if (nativeVideo) "NATIVE_VIDEO" else "WEBVIEW_BG"
+        val bgToken = if (nativeVideo) "" else buildBgCacheToken()
+        return listOf(
+            prefManager.isModEnabled,
+            prefManager.glassBlurPx,
+            prefManager.overlayDimPercent,
+            prefManager.isAmbientGlowEnabled,
+            prefManager.ledColors.joinToString(","),
+            prefManager.isHideSuggestionsEnabled,
+            bgMode,
+            bgToken
+        ).joinToString("|")
+    }
+
+    private fun syncModUiIfConfigChanged() {
         val currentUrl = binding.webView.url
-        if (!currentUrl.isNullOrBlank()) {
-            injectOrClearModUi(binding.webView, currentUrl)
+        if (currentUrl.isNullOrBlank()) return
+        val currentSig = buildCurrentConfigSignature()
+        if (currentSig != lastConfigSignature) {
+            injectOrClearModUi(binding.webView, currentUrl, forceUpdate = true)
         }
     }
 
@@ -699,13 +713,31 @@ class GeminiLauncherActivity : AppCompatActivity() {
         }.getOrDefault("image/jpeg")
     }
 
-    private fun injectOrClearModUi(webView: WebView?, url: String?) {
+    private fun injectOrClearModUi(
+        webView: WebView?,
+        url: String?,
+        forceUpdate: Boolean = false
+    ) {
         webView ?: return
         if (!isGeminiHost(url)) return
 
+        val normalizedUrl = url ?: return
+        val configSignature = buildCurrentConfigSignature()
+
+        // Inject strictly once per URL unless user actually changed Mod UI settings
+        if (!forceUpdate &&
+            lastInjectedUrl == normalizedUrl &&
+            lastConfigSignature == configSignature
+        ) {
+            return
+        }
+
+        lastInjectedUrl = normalizedUrl
+        lastConfigSignature = configSignature
+
         if (!prefManager.isModEnabled) {
             webView.evaluateJavascript(
-                "if (window.__MOD_UI_REMOVE__) { window.__MOD_UI_REMOVE__(); }",
+                "window.__modUiInjected = false; if (window.__MOD_UI_REMOVE__) { window.__MOD_UI_REMOVE__(); }",
                 null
             )
             return
@@ -727,9 +759,15 @@ class GeminiLauncherActivity : AppCompatActivity() {
         } else {
             "https://gemini.google.com$VIRTUAL_BG_PATH?v=${buildBgCacheToken()}"
         }
+        val escapedKey = "${normalizedUrl}::$configSignature".replace("'", "")
 
         val injectionJs = """
             (function() {
+              var injectKey = '$escapedKey';
+              if (!$forceUpdate && window.__modUiInjected === injectKey && document.getElementById('mod-ui-liquid-glass-style')) {
+                return;
+              }
+              window.__modUiInjected = injectKey;
               var styleId = 'mod-ui-liquid-glass-style';
               var b64 = '$modCssBase64';
               var cssText;
@@ -759,11 +797,14 @@ class GeminiLauncherActivity : AppCompatActivity() {
                 bgMode: '$bgMode',
                 bgUrl: '$bgUrl'
               };
+              if (!window.__MOD_UI_SCRIPT_LOADED__) {
+                window.__MOD_UI_SCRIPT_LOADED__ = true;
+                $modScriptRaw
+              }
+              if (window.__MOD_UI_APPLY__) {
+                window.__MOD_UI_APPLY__(window.__MOD_UI_CONFIG__);
+              }
             })();
-            $modScriptRaw
-            if (window.__MOD_UI_APPLY__) {
-              window.__MOD_UI_APPLY__(window.__MOD_UI_CONFIG__);
-            }
         """.trimIndent()
 
         webView.evaluateJavascript(injectionJs, null)

@@ -380,6 +380,7 @@
 
   function removeModUi() {
     window.__MOD_UI_ACTIVE__ = false;
+    window.__modUiInjected = false;
     clearHiddenSuggestions();
 
     var existing = document.getElementById(STYLE_ID);
@@ -436,11 +437,29 @@
     window.__MOD_UI_OBSERVER_ATTACHED__ = true;
     var rafScheduled = false;
 
-    var observer = new MutationObserver(function () {
+    function isMutationInsideInputArea(mutation) {
+      var target = mutation && mutation.target;
+      if (!target) return false;
+      var el = target.nodeType === 1 ? target : target.parentElement;
+      if (!el || !el.closest) return false;
+      return !!el.closest('input-area-v2, .mod-ui-glass-input, rich-textarea, .ql-editor');
+    }
+
+    var observer = new MutationObserver(function (mutations) {
       if (!window.__MOD_UI_ACTIVE__ || rafScheduled) return;
       // Do not mutate DOM/styles while user is focusing or typing in the prompt box
-      // so Android WebView IME never blurs and auto-dismisses the soft keyboard.
       if (isEditorFocused()) return;
+
+      // Ignore mutations that occurred exclusively inside the input box / editor
+      var hasExternalMutation = false;
+      for (var m = 0; m < mutations.length; m++) {
+        if (!isMutationInsideInputArea(mutations[m])) {
+          hasExternalMutation = true;
+          break;
+        }
+      }
+      if (!hasExternalMutation) return;
+
       rafScheduled = true;
       window.requestAnimationFrame(function () {
         rafScheduled = false;
