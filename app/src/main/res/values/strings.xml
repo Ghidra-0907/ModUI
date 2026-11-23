@@ -21,7 +21,9 @@
     <string name="label_overlay_dim">Độ tối lớp phủ (Overlay Dim)</string>
     <string name="desc_overlay_dim">Giúp chữ trắng luôn nổi bật trên nền sáng</string>
     <string name="label_ambient_glow">Viền phát sáng (Ambient Glow)</string>
-    <string name="desc_ambient_glow">Hiệu ứng viền phát sáng cho khung nhập liệu \"Hỏi Gemini\"</string>
+    <string name="desc_ambient_glow">Hiệu ứng viền LED chạy sáng quanh khung nhập liệu \"Hỏi Gemini\"</string>
+    <string name="label_led_colors">Màu dải LED (chọn nhiều màu)</string>
+    <string name="msg_led_min_one">Cần giữ lại ít nhất 1 màu LED</string>
     <string name="label_hide_suggestions">Ẩn câu hỏi gợi ý</string>
     <string name="desc_hide_suggestions">Ẩn các thẻ gợi ý ở màn hình chính của Gemini</string>
 

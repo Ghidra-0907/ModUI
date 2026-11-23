@@ -4,12 +4,18 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.transition.TransitionManager
+import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -40,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private var selectedBgType: BgType = BgType.STATIC
     private var selectedBgSource: BgSource = BgSource.PRESET
     private var selectedPresetId: String = PrefManager.STATIC_PRESETS.first().id
+    private val selectedLedColors = mutableListOf<String>()
 
     private val shizukuBinderReceivedListener = Shizuku.OnBinderReceivedListener {
         runOnUiThread {
@@ -150,6 +157,12 @@ class MainActivity : AppCompatActivity() {
         binding.switchAmbientGlow.isChecked = prefManager.isAmbientGlowEnabled
         binding.switchHideSuggestions.isChecked = prefManager.isHideSuggestionsEnabled
 
+        selectedLedColors.clear()
+        selectedLedColors.addAll(prefManager.ledColors)
+        binding.layoutLedColorPicker.visibility =
+            if (prefManager.isAmbientGlowEnabled) View.VISIBLE else View.GONE
+        renderLedColorSwatches()
+
         binding.toggleBgTab.check(
             if (currentTabIsAnimated) R.id.btnTabAnimated else R.id.btnTabStatic
         )
@@ -225,6 +238,12 @@ class MainActivity : AppCompatActivity() {
         // Overlay Dim slider (0% .. 80%)
         binding.sliderDim.addOnChangeListener { _, value, _ ->
             binding.tvDimValue.text = "${value.toInt()}%"
+        }
+
+        // Ambient Glow switch toggles multi-color LED swatch picker
+        binding.switchAmbientGlow.setOnCheckedChangeListener { _, isChecked ->
+            TransitionManager.beginDelayedTransition(binding.modEditorContent)
+            binding.layoutLedColorPicker.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
 
         // Bottom CTA: Save all settings & launch GeminiLauncherActivity
@@ -479,7 +498,99 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun renderLedColorSwatches() {
+        val container = binding.containerLedSwatches
+        container.removeAllViews()
+
+        val density = resources.displayMetrics.density
+        val outerSize = (42 * density).toInt()
+        val innerSize = (32 * density).toInt()
+        val checkSize = (18 * density).toInt()
+        val gap = (8 * density).toInt()
+        val ringStrokeWidth = (2 * density).toInt()
+
+        PrefManager.LED_COLOR_OPTIONS.forEachIndexed { index, option ->
+            val isSelected = selectedLedColors.contains(option.hex)
+            val parsedColor = Color.parseColor(option.hex)
+
+            // Outer ring container (highlighted when selected)
+            val swatchContainer = FrameLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(outerSize, outerSize).apply {
+                    if (index < PrefManager.LED_COLOR_OPTIONS.lastIndex) {
+                        marginEnd = gap
+                    }
+                }
+                contentDescription = option.label
+                isClickable = true
+                isFocusable = true
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(Color.TRANSPARENT)
+                    if (isSelected) {
+                        setStroke(ringStrokeWidth, parsedColor)
+                    } else {
+                        setStroke((1 * density).toInt(), ContextCompat.getColor(this@MainActivity, R.color.surface_stroke))
+                    }
+                }
+                alpha = if (isSelected) 1.0f else 0.72f
+            }
+
+            // Inner solid color circle
+            val innerDot = View(this).apply {
+                layoutParams = FrameLayout.LayoutParams(innerSize, innerSize, Gravity.CENTER)
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(parsedColor)
+                }
+            }
+            swatchContainer.addView(innerDot)
+
+            // Checkmark icon when selected
+            if (isSelected) {
+                val checkIcon = ImageView(this).apply {
+                    layoutParams = FrameLayout.LayoutParams(checkSize, checkSize, Gravity.CENTER)
+                    setImageResource(R.drawable.ic_swatch_check)
+                    imageTintList = ColorStateList.valueOf(
+                        if (option.needsDarkCheck) Color.parseColor("#0F172A") else Color.WHITE
+                    )
+                }
+                swatchContainer.addView(checkIcon)
+            }
+
+            swatchContainer.setOnClickListener {
+                toggleLedColor(option.hex)
+            }
+
+            container.addView(swatchContainer)
+        }
+
+        val count = selectedLedColors.size
+        binding.tvLedColorMode.text = if (count <= 1) {
+            "1 màu • Nhịp thở phát sáng"
+        } else {
+            "$count màu • Dải LED chạy xoay"
+        }
+    }
+
+    private fun toggleLedColor(hex: String) {
+        if (selectedLedColors.contains(hex)) {
+            if (selectedLedColors.size <= 1) {
+                // Keep at least 1 LED color selected
+                Toast.makeText(this, R.string.msg_led_min_one, Toast.LENGTH_SHORT).show()
+                return
+            }
+            selectedLedColors.remove(hex)
+        } else {
+            selectedLedColors.add(hex)
+        }
+        prefManager.ledColors = selectedLedColors
+        renderLedColorSwatches()
+    }
+
     private fun saveAllSettings() {
+        val colorsToSave = selectedLedColors.ifEmpty {
+            mutableListOf(PrefManager.DEFAULT_LED_FALLBACK_COLOR)
+        }
         prefManager.saveAll(
             modEnabled = binding.switchModEnabled.isChecked,
             type = selectedBgType,
@@ -488,6 +599,7 @@ class MainActivity : AppCompatActivity() {
             blurPx = binding.sliderBlur.value.toInt(),
             dimPercent = binding.sliderDim.value.toInt(),
             ambientGlow = binding.switchAmbientGlow.isChecked,
+            selectedLedColors = colorsToSave,
             hideSuggestions = binding.switchHideSuggestions.isChecked
         )
     }

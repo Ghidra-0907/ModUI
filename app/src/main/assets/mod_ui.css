@@ -1,14 +1,57 @@
 /* ==========================================================================
-   Mod UI — Liquid Glass Theme for Google Gemini Mobile Web
+   Mod UI — Liquid Glass Theme + Animated Multi-Color LED Prompt Border
    Supports:
      1) Static Image / GIF inside WebView (body::before) -> TRUE backdrop-filter blur
      2) Native MP4 Video (body.mod-video-mode) -> Simulated Multi-Layer Liquid Glass
+     3) Custom LED Prompt Border:
+        - 1 color  -> Single-color Breathing Pulse Glow
+        - 2+ colors -> Seamless rotating conic-gradient via @property --led-angle
    ========================================================================== */
+
+@property --led-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes modLedSpin {
+  from {
+    --led-angle: 0deg;
+  }
+  to {
+    --led-angle: 360deg;
+  }
+}
+
+@keyframes modLedSingleBreath {
+  0%, 100% {
+    border-color: rgba(var(--led-single-rgb), 0.72);
+    box-shadow:
+      0 0 12px rgba(var(--led-single-rgb), 0.36),
+      0 0 24px rgba(var(--led-single-rgb), 0.22),
+      inset 0 0 10px rgba(var(--led-single-rgb), 0.16),
+      inset 0 1px 1px rgba(255, 255, 255, 0.24);
+  }
+  50% {
+    border-color: var(--led-single-color);
+    box-shadow:
+      0 0 18px rgba(var(--led-single-rgb), 0.72),
+      0 0 36px rgba(var(--led-single-rgb), 0.44),
+      inset 0 0 16px rgba(var(--led-single-rgb), 0.28),
+      inset 0 1px 1px rgba(255, 255, 255, 0.30);
+  }
+}
 
 :root {
   --mod-glass-blur: 20px;
   --mod-overlay-dim: 0.35;
   --mod-bg-image: none;
+
+  /* Dynamic LED variables (populated by mod_script.js from SharedPreferences) */
+  --led-single-color: #38bdf8;
+  --led-single-rgb: 56, 189, 248;
+  --led-stops: #38bdf8, #a855f7, #ec4899, #38bdf8;
+  --led-gradient: conic-gradient(from var(--led-angle), var(--led-stops));
 
   /* Liquid Glass palette */
   --mod-input-glass-bg: rgba(20, 30, 60, 0.55);
@@ -190,7 +233,7 @@ input-area-v2 .input-area-container,
   box-shadow: none !important;
 }
 
-/* Prevent parent container from painting a second outer box */
+/* Prevent parent container from painting a second outer box or clipping LED halo */
 input-container,
 .input-area-container:has(input-area-v2),
 .input-area-container:has(.mod-ui-glass-input) {
@@ -198,26 +241,46 @@ input-container,
   background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  overflow: visible !important;
 }
 
-/* Step 2b: Apply ONE unified Liquid Glass frame to the outermost input wrapper */
+/* Step 2b: Unified Single-Frame Liquid Glass Host (no overflow clip so LED halo shines) */
 input-area-v2,
 .mod-ui-glass-input,
 .input-area-container:not(:has(input-area-v2)):not(:has(.mod-ui-glass-input)) {
+  position: relative !important;
+  isolation: isolate !important;
+  z-index: 1 !important;
+  border-radius: 28px !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+/* Frosted Liquid Glass Pill Surface (z-index: -1 inside input stacking context) */
+input-area-v2::before,
+.mod-ui-glass-input::before,
+.input-area-container:not(:has(input-area-v2)):not(:has(.mod-ui-glass-input))::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -1 !important;
   border-radius: 28px !important;
   background: var(--mod-input-glass-bg) !important;
   backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
   -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
   border: 1px solid var(--mod-glass-border) !important;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.34), var(--mod-glass-inset) !important;
-  overflow: hidden !important;
+  pointer-events: none !important;
   transition: box-shadow 0.25s ease, border-color 0.25s ease !important;
 }
 
-/* Simulated Liquid Glass for Native MP4 Video Mode */
-body.mod-video-mode input-area-v2,
-body.mod-video-mode .mod-ui-glass-input,
-body.mod-video-mode .input-area-container:not(:has(input-area-v2)):not(:has(.mod-ui-glass-input)) {
+/* Simulated Liquid Glass Pill Surface for Native MP4 Video Mode */
+body.mod-video-mode input-area-v2::before,
+body.mod-video-mode .mod-ui-glass-input::before,
+body.mod-video-mode .input-area-container:not(:has(input-area-v2)):not(:has(.mod-ui-glass-input))::before {
   background: var(--mod-video-glass-bg) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -225,14 +288,80 @@ body.mod-video-mode .input-area-container:not(:has(input-area-v2)):not(:has(.mod
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.42), inset 0 1px 1px rgba(255, 255, 255, 0.25) !important;
 }
 
-/* Ambient Glow on the single outermost input frame */
-body.mod-ambient-glow input-area-v2,
-body.mod-ambient-glow .mod-ui-glass-input,
-body.mod-ambient-glow .input-area-container:not(:has(input-area-v2)):not(:has(.mod-ui-glass-input)) {
-  border: 1.5px solid rgba(96, 165, 250, 0.65) !important;
-  box-shadow:
-    0 0 22px rgba(59, 130, 246, 0.45),
-    inset 0 0 12px rgba(147, 197, 253, 0.20) !important;
+/* Mode 1: Single-Color Breathing Pulse Glow (when exactly 1 LED color is selected) */
+body.mod-ambient-glow.mod-led-single input-area-v2::before,
+body.mod-ambient-glow.mod-led-single .mod-ui-glass-input::before,
+body.mod-ambient-glow.mod-led-single .input-area-container:not(:has(input-area-v2)):not(:has(.mod-ui-glass-input))::before {
+  border: 2px solid var(--led-single-color) !important;
+  animation: modLedSingleBreath 2.8s ease-in-out infinite !important;
+}
+
+/* Mode 2: Multi-Color Running LED Strip (2+ selected colors) */
+body.mod-ambient-glow.mod-led-multi input-area-v2::before,
+body.mod-ambient-glow.mod-led-multi .mod-ui-glass-input::before,
+body.mod-ambient-glow.mod-led-multi .input-area-container:not(:has(input-area-v2)):not(:has(.mod-ui-glass-input))::before {
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Default hidden LED overlay elements (only shown in Multi-Color Running LED mode) */
+.mod-ui-led-ring,
+.mod-ui-led-halo {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Crisp 2px Rotating LED Border Ring matching exact border-radius: 28px */
+body.mod-ambient-glow.mod-led-multi .mod-ui-led-ring {
+  display: block !important;
+  position: absolute !important;
+  inset: -1px !important;
+  padding: 2px !important;
+  border-radius: 28px !important;
+  --led-gradient: conic-gradient(from var(--led-angle), var(--led-stops));
+  background: var(--led-gradient) !important;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  pointer-events: none !important;
+  z-index: 10 !important;
+  animation: modLedSpin 3.6s linear infinite !important;
+}
+
+/* Soft Blurred Perimeter Glow Halo behind the frosted glass pill (filter: blur(10px), opacity: 0.75) */
+body.mod-ambient-glow.mod-led-multi .mod-ui-led-halo {
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 28px !important;
+  filter: blur(10px) !important;
+  opacity: 0.75 !important;
+  pointer-events: none !important;
+  z-index: -2 !important;
+}
+
+body.mod-ambient-glow.mod-led-multi .mod-ui-led-halo-ring {
+  display: block !important;
+  position: absolute !important;
+  inset: -3px !important;
+  padding: 5px !important;
+  border-radius: 30px !important;
+  --led-gradient: conic-gradient(from var(--led-angle), var(--led-stops));
+  background: var(--led-gradient) !important;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  pointer-events: none !important;
+  animation: modLedSpin 3.6s linear infinite !important;
 }
 
 /* Keep placeholder readable */

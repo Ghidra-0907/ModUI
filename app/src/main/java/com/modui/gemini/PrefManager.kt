@@ -25,6 +25,12 @@ data class BgPreset(
         get() = "file:///android_asset/presets/$assetFileName"
 }
 
+data class LedColorOption(
+    val hex: String,
+    val label: String,
+    val needsDarkCheck: Boolean = false
+)
+
 class PrefManager(context: Context) {
 
     private val appContext = context.applicationContext
@@ -67,6 +73,24 @@ class PrefManager(context: Context) {
     var isAmbientGlowEnabled: Boolean
         get() = prefs.getBoolean(KEY_AMBIENT_GLOW, true)
         set(value) = prefs.edit().putBoolean(KEY_AMBIENT_GLOW, value).apply()
+
+    /** Selected LED hex colors stored as comma-separated string, e.g. "#38bdf8,#a855f7,#ec4899" */
+    var ledColors: List<String>
+        get() {
+            val raw = prefs.getString(KEY_LED_COLORS, DEFAULT_LED_COLORS_CSV) ?: DEFAULT_LED_COLORS_CSV
+            val parsed = raw.split(",")
+                .map { it.trim().lowercase() }
+                .filter { it.matches(HEX_COLOR_REGEX) }
+                .distinct()
+            return if (parsed.isEmpty()) DEFAULT_LED_COLORS else parsed
+        }
+        set(value) {
+            val cleaned = value.map { it.trim().lowercase() }
+                .filter { it.matches(HEX_COLOR_REGEX) }
+                .distinct()
+            val toSave = if (cleaned.isEmpty()) listOf(DEFAULT_LED_FALLBACK_COLOR) else cleaned
+            prefs.edit().putString(KEY_LED_COLORS, toSave.joinToString(",")).apply()
+        }
 
     var isHideSuggestionsEnabled: Boolean
         get() = prefs.getBoolean(KEY_HIDE_SUGGESTIONS, false)
@@ -124,8 +148,15 @@ class PrefManager(context: Context) {
         blurPx: Int,
         dimPercent: Int,
         ambientGlow: Boolean,
+        selectedLedColors: List<String>,
         hideSuggestions: Boolean
     ) {
+        val cleanedColors = selectedLedColors
+            .map { it.trim().lowercase() }
+            .filter { it.matches(HEX_COLOR_REGEX) }
+            .distinct()
+            .ifEmpty { listOf(DEFAULT_LED_FALLBACK_COLOR) }
+
         prefs.edit()
             .putBoolean(KEY_MOD_ENABLED, modEnabled)
             .putString(KEY_BG_TYPE, type.name)
@@ -134,6 +165,7 @@ class PrefManager(context: Context) {
             .putInt(KEY_GLASS_BLUR, blurPx.coerceIn(0, 30))
             .putInt(KEY_OVERLAY_DIM, dimPercent.coerceIn(0, 80))
             .putBoolean(KEY_AMBIENT_GLOW, ambientGlow)
+            .putString(KEY_LED_COLORS, cleanedColors.joinToString(","))
             .putBoolean(KEY_HIDE_SUGGESTIONS, hideSuggestions)
             .apply()
     }
@@ -148,12 +180,29 @@ class PrefManager(context: Context) {
         private const val KEY_GLASS_BLUR = "glass_blur_px"
         private const val KEY_OVERLAY_DIM = "overlay_dim_percent"
         private const val KEY_AMBIENT_GLOW = "ambient_glow"
+        private const val KEY_LED_COLORS = "led_colors"
         private const val KEY_HIDE_SUGGESTIONS = "hide_suggestions"
         private const val KEY_LAST_CUSTOM_ANIMATED_TYPE = "last_custom_animated_type"
         private const val KEY_CUSTOM_MEDIA_VERSION = "custom_media_version"
 
+        private val HEX_COLOR_REGEX = Regex("^#[0-9a-f]{6}$")
+
         const val DEFAULT_GLASS_BLUR = 20
         const val DEFAULT_OVERLAY_DIM = 35
+        const val DEFAULT_LED_FALLBACK_COLOR = "#38bdf8"
+        const val DEFAULT_LED_COLORS_CSV = "#38bdf8,#a855f7,#ec4899"
+
+        val DEFAULT_LED_COLORS = listOf("#38bdf8", "#a855f7", "#ec4899")
+
+        val LED_COLOR_OPTIONS = listOf(
+            LedColorOption("#38bdf8", "Xanh Cyan", needsDarkCheck = true),
+            LedColorOption("#3b82f6", "Xanh Dương", needsDarkCheck = false),
+            LedColorOption("#a855f7", "Tím Neon", needsDarkCheck = false),
+            LedColorOption("#ec4899", "Hồng Magenta", needsDarkCheck = false),
+            LedColorOption("#f97316", "Đỏ Cam", needsDarkCheck = false),
+            LedColorOption("#22c55e", "Xanh Lá", needsDarkCheck = true),
+            LedColorOption("#f8fafc", "Trắng Băng", needsDarkCheck = true)
+        )
 
         const val FILE_STATIC_BG = "bg_static.jpg"
         const val FILE_ANIMATED_GIF = "bg_animated.gif"

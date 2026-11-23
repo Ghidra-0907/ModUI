@@ -682,6 +682,11 @@ class GeminiLauncherActivity : AppCompatActivity() {
         val blurPx = prefManager.glassBlurPx
         val overlayDim = String.format(Locale.US, "%.2f", prefManager.overlayDimPercent / 100.0)
         val ambientGlow = prefManager.isAmbientGlowEnabled
+        val ledColorsJsArray = prefManager.ledColors.joinToString(
+            prefix = "[",
+            postfix = "]",
+            separator = ", "
+        ) { "'$it'" }
         val hideSuggestions = prefManager.isHideSuggestionsEnabled
         val nativeVideo = isUsingNativeVideo()
         val bgMode = if (nativeVideo) "NATIVE_VIDEO" else "WEBVIEW_BG"
@@ -717,6 +722,7 @@ class GeminiLauncherActivity : AppCompatActivity() {
                 blurPx: $blurPx,
                 overlayDim: $overlayDim,
                 ambientGlow: $ambientGlow,
+                ledColors: $ledColorsJsArray,
                 hideSuggestions: $hideSuggestions,
                 bgMode: '$bgMode',
                 bgUrl: '$bgUrl'

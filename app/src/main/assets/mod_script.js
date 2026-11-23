@@ -107,12 +107,47 @@
     }
   }
 
-  function normalizeInputBox() {
-    var oldTagged = document.querySelectorAll('.mod-ui-glass-input');
-    for (var k = 0; k < oldTagged.length; k++) {
-      oldTagged[k].classList.remove('mod-ui-glass-input');
+  function hexToRgbString(hex) {
+    var clean = String(hex || '#38bdf8').replace('#', '').trim();
+    if (clean.length === 3) {
+      clean = clean[0] + clean[0] + clean[1] + clean[1] + clean[2] + clean[2];
+    }
+    var num = parseInt(clean, 16);
+    if (isNaN(num)) return '56, 189, 248';
+    var r = (num >> 16) & 255;
+    var g = (num >> 8) & 255;
+    var b = num & 255;
+    return r + ', ' + g + ', ' + b;
+  }
+
+  function ensureLedOverlays(outerInput) {
+    if (!outerInput) return;
+
+    // Ensure immediate parent does not clip the 10px soft outer LED glow
+    var parent = outerInput.parentElement;
+    if (parent && parent.style && parent.style.overflow !== 'visible') {
+      parent.style.setProperty('overflow', 'visible', 'important');
     }
 
+    if (!outerInput.querySelector(':scope > .mod-ui-led-halo')) {
+      var halo = document.createElement('span');
+      halo.className = 'mod-ui-led-halo';
+      halo.setAttribute('aria-hidden', 'true');
+      var haloRing = document.createElement('span');
+      haloRing.className = 'mod-ui-led-halo-ring';
+      halo.appendChild(haloRing);
+      outerInput.appendChild(halo);
+    }
+
+    if (!outerInput.querySelector(':scope > .mod-ui-led-ring')) {
+      var ring = document.createElement('span');
+      ring.className = 'mod-ui-led-ring';
+      ring.setAttribute('aria-hidden', 'true');
+      outerInput.appendChild(ring);
+    }
+  }
+
+  function normalizeInputBox() {
     var outerInput = document.querySelector('input-area-v2');
     if (!outerInput) {
       var editor = document.querySelector('rich-textarea');
@@ -124,8 +159,20 @@
       }
     }
 
+    var oldTagged = document.querySelectorAll('.mod-ui-glass-input');
+    for (var k = 0; k < oldTagged.length; k++) {
+      if (oldTagged[k] !== outerInput) {
+        oldTagged[k].classList.remove('mod-ui-glass-input');
+      }
+    }
+
     if (outerInput) {
-      outerInput.classList.add('mod-ui-glass-input');
+      if (!outerInput.classList.contains('mod-ui-glass-input')) {
+        outerInput.classList.add('mod-ui-glass-input');
+      }
+
+      // Attach pointer-events: none LED ring & blurred perimeter halo overlays
+      ensureLedOverlays(outerInput);
 
       // Strip any inline borders/backgrounds on inner wrappers to prevent double-border look
       for (var i = 0; i < INNER_INPUT_SELECTORS.length; i++) {
@@ -261,10 +308,36 @@
     var overlayDim = typeof config.overlayDim === 'number' ? config.overlayDim : 0.35;
     var isVideoMode = config.bgMode === 'NATIVE_VIDEO';
     var bgUrl = config.bgUrl || '';
+    var ambientOn = !!config.ambientGlow;
+
+    // Build custom LED color configuration (1 color = breathing pulse, 2+ colors = rotating conic-gradient)
+    var rawColors = Array.isArray(config.ledColors) ? config.ledColors : [];
+    var ledColors = [];
+    for (var ci = 0; ci < rawColors.length; ci++) {
+      if (typeof rawColors[ci] === 'string' && rawColors[ci].trim().length > 0) {
+        ledColors.push(rawColors[ci].trim());
+      }
+    }
+    if (ledColors.length === 0) {
+      ledColors = ['#38bdf8', '#a855f7', '#ec4899'];
+    }
+
+    var isSingleLed = ambientOn && ledColors.length === 1;
+    var isMultiLed = ambientOn && ledColors.length >= 2;
+    var firstColor = ledColors[0];
+    var closedStops = ledColors.concat([firstColor]).join(', ');
+    var ledGradientValue = isMultiLed
+      ? 'conic-gradient(from var(--led-angle), ' + closedStops + ')'
+      : firstColor;
 
     if (root) {
       root.style.setProperty('--mod-glass-blur', blurPx + 'px');
       root.style.setProperty('--mod-overlay-dim', String(overlayDim));
+      root.style.setProperty('--led-single-color', firstColor);
+      root.style.setProperty('--led-single-rgb', hexToRgbString(firstColor));
+      root.style.setProperty('--led-stops', closedStops);
+      root.style.setProperty('--led-gradient', ledGradientValue);
+
       if (!isVideoMode && bgUrl) {
         root.style.setProperty('--mod-bg-image', 'url("' + bgUrl + '")');
       } else {
@@ -272,14 +345,18 @@
       }
       root.classList.toggle('mod-webview-bg', !isVideoMode && !!bgUrl);
       root.classList.toggle('mod-video-mode', isVideoMode);
-      root.classList.toggle('mod-ambient-glow', !!config.ambientGlow);
+      root.classList.toggle('mod-ambient-glow', ambientOn);
+      root.classList.toggle('mod-led-single', isSingleLed);
+      root.classList.toggle('mod-led-multi', isMultiLed);
       root.classList.toggle('mod-hide-suggestions', !!config.hideSuggestions);
     }
 
     if (body) {
       body.classList.toggle('mod-webview-bg', !isVideoMode && !!bgUrl);
       body.classList.toggle('mod-video-mode', isVideoMode);
-      body.classList.toggle('mod-ambient-glow', !!config.ambientGlow);
+      body.classList.toggle('mod-ambient-glow', ambientOn);
+      body.classList.toggle('mod-led-single', isSingleLed);
+      body.classList.toggle('mod-led-multi', isMultiLed);
       body.classList.toggle('mod-hide-suggestions', !!config.hideSuggestions);
     }
 
@@ -303,6 +380,13 @@
       existing.parentNode.removeChild(existing);
     }
 
+    var ledNodes = document.querySelectorAll('.mod-ui-led-ring, .mod-ui-led-halo');
+    for (var l = 0; l < ledNodes.length; l++) {
+      if (ledNodes[l].parentNode) {
+        ledNodes[l].parentNode.removeChild(ledNodes[l]);
+      }
+    }
+
     var taggedInputs = document.querySelectorAll('.mod-ui-glass-input');
     for (var i = 0; i < taggedInputs.length; i++) {
       taggedInputs[i].classList.remove('mod-ui-glass-input');
@@ -313,13 +397,24 @@
       taggedPills[p].classList.remove('mod-ui-model-pill');
     }
 
-    var classes = ['mod-webview-bg', 'mod-video-mode', 'mod-ambient-glow', 'mod-hide-suggestions'];
+    var classes = [
+      'mod-webview-bg',
+      'mod-video-mode',
+      'mod-ambient-glow',
+      'mod-led-single',
+      'mod-led-multi',
+      'mod-hide-suggestions'
+    ];
     var root = document.documentElement;
     var body = document.body;
     if (root) {
       root.style.removeProperty('--mod-glass-blur');
       root.style.removeProperty('--mod-overlay-dim');
       root.style.removeProperty('--mod-bg-image');
+      root.style.removeProperty('--led-single-color');
+      root.style.removeProperty('--led-single-rgb');
+      root.style.removeProperty('--led-stops');
+      root.style.removeProperty('--led-gradient');
       root.classList.remove.apply(root.classList, classes);
     }
     if (body) {
