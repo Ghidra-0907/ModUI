@@ -1,32 +1,88 @@
 /* ==========================================================================
-   Mod UI — Liquid Glass Theme for Google Gemini (gemini.google.com/app)
+   Mod UI — Liquid Glass Theme for Google Gemini Mobile Web
+   Supports:
+     1) Static Image / GIF inside WebView (body::before) -> TRUE backdrop-filter blur
+     2) Native MP4 Video (body.mod-video-mode) -> Simulated Multi-Layer Liquid Glass
    ========================================================================== */
 
 :root {
-  --mod-glass-blur: 16px;
-  --mod-glass-bg: rgba(18, 22, 32, 0.42);
-  --mod-glass-bg-strong: rgba(14, 17, 26, 0.62);
-  --mod-glass-user-bubble: rgba(168, 199, 250, 0.16);
-  --mod-glass-border: rgba(255, 255, 255, 0.17);
-  --mod-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  --mod-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.30);
+  --mod-glass-blur: 20px;
+  --mod-overlay-dim: 0.35;
+  --mod-bg-image: none;
 
-  /* Override Gemini Material / GM3 surface tokens so Angular inherits transparency */
+  /* Liquid Glass palette */
+  --mod-input-glass-bg: rgba(20, 30, 60, 0.55);
+  --mod-video-glass-bg: linear-gradient(135deg, rgba(25, 35, 65, 0.68), rgba(15, 20, 40, 0.78));
+  --mod-sidebar-glass-bg: rgba(12, 18, 34, 0.82);
+  --mod-sidebar-video-bg: linear-gradient(160deg, rgba(16, 24, 46, 0.88), rgba(10, 14, 28, 0.94));
+  --mod-user-bubble-bg: rgba(36, 56, 104, 0.50);
+  --mod-glass-border: rgba(255, 255, 255, 0.18);
+  --mod-glass-inset: inset 0 1px 1px rgba(255, 255, 255, 0.25);
+
+  /* Override Gemini Material 3 / Angular surface tokens */
   --gem-sys-color--surface: transparent !important;
-  --gem-sys-color--surface-container: rgba(20, 24, 34, 0.45) !important;
+  --gem-sys-color--surface-container: rgba(20, 30, 60, 0.45) !important;
   --gem-sys-color--surface-container-low: transparent !important;
-  --gem-sys-color--surface-container-high: rgba(24, 30, 44, 0.54) !important;
-  --gem-sys-color--surface-container-highest: rgba(30, 36, 52, 0.62) !important;
+  --gem-sys-color--surface-container-high: rgba(20, 30, 60, 0.58) !important;
+  --gem-sys-color--surface-container-highest: rgba(25, 38, 72, 0.68) !important;
   --bard-color-surface: transparent !important;
-  --bard-color-surface-container: rgba(20, 24, 34, 0.45) !important;
+  --bard-color-surface-container: rgba(20, 30, 60, 0.45) !important;
   --bard-color-main-container-background: transparent !important;
   --mat-sidenav-content-background-color: transparent !important;
   --mat-sidenav-container-background-color: transparent !important;
+  --mat-app-background-color: transparent !important;
 }
 
-/* 1. 100% Transparent Default Structural Backgrounds */
-html,
-body,
+/* ==========================================================================
+   1. Wallpaper & Dim Overlay INSIDE WebView (Enables real backdrop-filter!)
+   ========================================================================== */
+
+html {
+  background: transparent !important;
+  background-color: transparent !important;
+  color-scheme: dark !important;
+}
+
+body {
+  position: relative !important;
+  isolation: isolate !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #f3f6fc !important;
+}
+
+/* Static / GIF wallpaper rendered directly inside WebView compositor */
+body.mod-webview-bg::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: -2 !important;
+  background-image: var(--mod-bg-image) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  pointer-events: none !important;
+  transform: translateZ(0);
+}
+
+/* Dim overlay inside WebView (above wallpaper, below UI, blurred by backdrop-filter) */
+body.mod-webview-bg::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  background: rgba(0, 0, 0, var(--mod-overlay-dim)) !important;
+  pointer-events: none !important;
+}
+
+/* Native MP4 Video mode: keep WebView background 100% see-through */
+body.mod-video-mode::before,
+body.mod-video-mode::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Transparent structural containers */
 app-root,
 chat-app,
 main,
@@ -42,7 +98,6 @@ chat-window-content,
 .chat-history-scroll-container,
 infinite-scroller,
 .conversation-container,
-.input-area-container,
 input-container,
 .bottom-container,
 .input-gradient,
@@ -53,13 +108,14 @@ top-bar-actions,
 header,
 .boqOnegoogleliteOgbOneGoogleBar,
 zero-state-v2,
-.zero-state-container {
+.zero-state-container,
+modular-zero-state {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
 }
 
-/* Remove opaque fade-out gradient masks above input bar & below header */
+/* Remove opaque gradient scrims above the input bar & below the header */
 .input-area-container::before,
 .input-area-container::after,
 input-container::before,
@@ -69,114 +125,238 @@ input-container::after,
 chat-window::before,
 chat-window::after,
 .chat-history::before,
-.chat-history::after {
+.chat-history::after,
+bard-header::after {
   background: none !important;
   background-image: none !important;
   box-shadow: none !important;
 }
 
-/* Ensure crisp light text over dynamic backgrounds */
-body,
+/* Crisp light typography over wallpaper */
 chat-window,
 .chat-history,
 .model-response-text,
 .markdown,
 .query-text,
-rich-textarea .ql-editor {
+rich-textarea .ql-editor,
+zero-state-v2 h1,
+zero-state-v2 h2,
+.zero-state-container h1,
+.zero-state-container h2 {
   color: #f3f6fc !important;
 }
 
-/* 2. Liquid Glass — Input Area ("Hỏi Gemini") */
-input-area-v2,
+/* ==========================================================================
+   2. Single-Frame Liquid Glass Input Bar ("Try @ for more" / "Hỏi Gemini")
+   ========================================================================== */
+
+/* Step 2a: Strip ALL backgrounds, borders, outlines & shadows from inner input wrappers */
+rich-textarea,
+rich-textarea *,
+.ql-container,
+.ql-editor,
 .text-input-field,
-input-area-v2 .input-area {
-  background: var(--mod-glass-bg) !important;
-  backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
-  border: 1px solid var(--mod-glass-border) !important;
-  border-radius: 28px !important;
-  box-shadow: var(--mod-glass-shadow), var(--mod-glass-highlight) !important;
-  transition: box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease !important;
+.text-input-field-with-images,
+.text-input-field_textarea-wrapper,
+.text-input-field_textarea,
+.input-box-wrapper,
+.input-area,
+.input-area-with-dictation,
+.input-buttons-wrapper-bottom,
+.input-buttons-wrapper-top,
+.leading-actions-wrapper,
+.trailing-actions-wrapper,
+input-area-v2 .text-input-field,
+input-area-v2 .input-box-wrapper,
+input-area-v2 .input-area,
+input-area-v2 fieldset,
+input-area-v2 .input-area-container,
+.mod-ui-glass-input .text-input-field,
+.mod-ui-glass-input .input-box-wrapper,
+.mod-ui-glass-input .input-area,
+.mod-ui-glass-input fieldset,
+.mod-ui-glass-input rich-textarea,
+.mod-ui-glass-input .ql-editor,
+.mod-ui-glass-input .mdc-text-field,
+.mod-ui-glass-input .mdc-notched-outline,
+.mod-ui-glass-input .mdc-notched-outline__leading,
+.mod-ui-glass-input .mdc-notched-outline__notch,
+.mod-ui-glass-input .mdc-notched-outline__trailing {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
-/* Keep nested inner textarea layers transparent to prevent double-blur artifacts */
-input-area-v2 .text-input-field,
-input-area-v2 .input-area,
-.text-input-field rich-textarea,
-rich-textarea,
-rich-textarea .ql-container,
-rich-textarea .ql-editor,
-.text-input-field_textarea-wrapper,
-.input-buttons-wrapper-bottom {
+/* Prevent parent container from painting a second outer box */
+input-container,
+.input-area-container:has(input-area-v2),
+.input-area-container:has(.mod-ui-glass-input) {
   background: transparent !important;
   background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }
 
-/* If Gemini renders standalone .text-input-field outside input-area-v2 */
-:not(input-area-v2) > .text-input-field {
-  background: var(--mod-glass-bg) !important;
-  backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
-  border: 1px solid var(--mod-glass-border) !important;
+/* Step 2b: Apply ONE unified Liquid Glass frame to the outermost input wrapper */
+input-area-v2,
+.mod-ui-glass-input,
+.input-area-container:not(:has(input-area-v2)):not(:has(.mod-ui-glass-input)) {
   border-radius: 28px !important;
-  box-shadow: var(--mod-glass-shadow), var(--mod-glass-highlight) !important;
-}
-
-/* Fallback if rich-textarea is rendered standalone */
-:not(input-area-v2):not(.text-input-field) > rich-textarea {
-  background: var(--mod-glass-bg) !important;
+  background: var(--mod-input-glass-bg) !important;
   backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
   -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
   border: 1px solid var(--mod-glass-border) !important;
-  border-radius: 24px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.34), var(--mod-glass-inset) !important;
+  overflow: hidden !important;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease !important;
 }
 
-rich-textarea .ql-editor.ql-blank::before {
-  color: rgba(243, 246, 252, 0.68) !important;
-}
-
-/* 3. Liquid Glass — Navigation Sidebar */
-bard-sidenav,
-mat-sidenav,
-.mat-drawer,
-.sidenav-with-history-container,
-side-navigation-content {
-  background: var(--mod-glass-bg-strong) !important;
-  backdrop-filter: blur(calc(var(--mod-glass-blur) + 4px)) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(calc(var(--mod-glass-blur) + 4px)) saturate(180%) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 8px 0 36px rgba(0, 0, 0, 0.42) !important;
-}
-
-bard-sidenav .sidenav-with-history-container,
-bard-sidenav side-navigation-content {
-  background: transparent !important;
+/* Simulated Liquid Glass for Native MP4 Video Mode */
+body.mod-video-mode input-area-v2,
+body.mod-video-mode .mod-ui-glass-input,
+body.mod-video-mode .input-area-container:not(:has(input-area-v2)):not(:has(.mod-ui-glass-input)) {
+  background: var(--mod-video-glass-bg) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border-right: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.42), inset 0 1px 1px rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Ambient Glow on the single outermost input frame */
+body.mod-ambient-glow input-area-v2,
+body.mod-ambient-glow .mod-ui-glass-input,
+body.mod-ambient-glow .input-area-container:not(:has(input-area-v2)):not(:has(.mod-ui-glass-input)) {
+  border: 1.5px solid rgba(96, 165, 250, 0.65) !important;
+  box-shadow:
+    0 0 22px rgba(59, 130, 246, 0.45),
+    inset 0 0 12px rgba(147, 197, 253, 0.20) !important;
+}
+
+/* Keep placeholder readable */
+rich-textarea .ql-editor.ql-blank::before {
+  color: rgba(226, 234, 248, 0.68) !important;
+}
+
+/* ==========================================================================
+   3. Top Header Model Switcher Pill & Mobile Sidebar (Dark Frosted Glass)
+   ========================================================================== */
+
+/* Clear harsh rectangular borders/boxes on header wrappers */
+bard-header *,
+top-bar-actions,
+.top-bar-actions,
+bard-mode-switcher,
+.pill-ui-logo-container,
+.bard-logo-container,
+.desktop-ogb-buffer {
   box-shadow: none !important;
 }
 
-/* 4. Liquid Glass — User Chat Bubbles */
-user-query .user-query-bubble-with-background,
-user-query .query-content,
-.user-query-bubble-with-background,
-user-query {
-  border-radius: 22px 22px 6px 22px !important;
+bard-mode-switcher,
+.pill-ui-logo-container,
+.bard-logo-container {
+  background: transparent !important;
+  border: none !important;
 }
+
+/* Model switcher pill button ("Gemini Hydrogen" / "Tự động") */
+bard-mode-switcher button,
+bard-mode-switcher .mdc-button,
+[data-test-id="bard-mode-menu-button"],
+.logo-pill-btn,
+.mod-ui-model-pill {
+  border-radius: 20px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.16) !important;
+  padding: 4px 12px !important;
+  overflow: hidden !important;
+}
+
+body.mod-video-mode bard-mode-switcher button,
+body.mod-video-mode [data-test-id="bard-mode-menu-button"],
+body.mod-video-mode .logo-pill-btn,
+body.mod-video-mode .mod-ui-model-pill {
+  background: linear-gradient(135deg, rgba(25, 35, 65, 0.65), rgba(15, 20, 40, 0.75)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Strip inner button outline/ripple border artifacts on model pill */
+bard-mode-switcher button .mdc-button__ripple,
+.mod-ui-model-pill .mdc-button__ripple,
+bard-mode-switcher button .mat-mdc-button-persistent-ripple,
+.mod-ui-model-pill .mat-mdc-button-persistent-ripple {
+  border-radius: 20px !important;
+}
+
+/* Mobile Slide-Out Sidebar (bard-sidenav / mat-drawer) */
+bard-sidenav,
+mat-sidenav,
+mat-drawer,
+.mat-drawer {
+  background: var(--mod-sidebar-glass-bg) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 8px 0 36px rgba(0, 0, 0, 0.52) !important;
+}
+
+body.mod-video-mode bard-sidenav,
+body.mod-video-mode mat-sidenav,
+body.mod-video-mode mat-drawer,
+body.mod-video-mode .mat-drawer {
+  background: var(--mod-sidebar-video-bg) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 8px 0 36px rgba(0, 0, 0, 0.56), inset -1px 0 1px rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Keep inner sidebar layers transparent so blur is never doubled */
+bard-sidenav .mat-drawer-inner-container,
+mat-drawer .mat-drawer-inner-container,
+.sidenav-with-history-container,
+side-navigation-content,
+.side-nav-opened {
+  background: transparent !important;
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.mat-drawer-backdrop.mat-drawer-shown {
+  background-color: rgba(4, 8, 20, 0.48) !important;
+}
+
+/* ==========================================================================
+   4. Liquid Glass — User Chat Bubbles, Code Blocks & Overlays
+   ========================================================================== */
 
 user-query .user-query-bubble-with-background,
 .user-query-bubble-with-background {
-  background: var(--mod-glass-user-bubble) !important;
+  background: var(--mod-user-bubble-bg) !important;
   backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
   -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.20) !important;
-  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.20) !important;
+  border-radius: 22px 22px 6px 22px !important;
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.26), var(--mod-glass-inset) !important;
 }
 
-/* Subtle Liquid Glass for Code Blocks, Menus, Dialogs & Model Cards */
+body.mod-video-mode user-query .user-query-bubble-with-background,
+body.mod-video-mode .user-query-bubble-with-background {
+  background: var(--mod-video-glass-bg) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.34), inset 0 1px 1px rgba(255, 255, 255, 0.25) !important;
+}
+
 code-block,
 .code-block,
 pre code,
@@ -184,53 +364,36 @@ pre code,
 .mat-mdc-dialog-surface,
 .cdk-overlay-pane .mat-mdc-menu-panel,
 .mat-bottom-sheet-container {
-  background: rgba(16, 20, 30, 0.66) !important;
+  background: rgba(14, 20, 38, 0.80) !important;
   backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
   -webkit-backdrop-filter: blur(var(--mod-glass-blur)) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
   border-radius: 18px !important;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.44), inset 0 1px 1px rgba(255, 255, 255, 0.18) !important;
 }
 
-/* Subtle glass pill for action chips & header pills */
-.new-chat-button,
-bard-mode-switcher button,
-.pill-ui-logo-container {
-  background: rgba(255, 255, 255, 0.08) !important;
-  backdrop-filter: blur(calc(var(--mod-glass-blur) * 0.75)) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(calc(var(--mod-glass-blur) * 0.75)) saturate(160%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+body.mod-video-mode code-block,
+body.mod-video-mode .code-block,
+body.mod-video-mode .mat-mdc-menu-panel,
+body.mod-video-mode .mat-mdc-dialog-surface,
+body.mod-video-mode .mat-bottom-sheet-container {
+  background: var(--mod-video-glass-bg) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-/* 5. Optional Feature: Ambient Glow on Input Box */
-@keyframes modUiAmbientGlow {
-  0%, 100% {
-    border-color: rgba(168, 199, 250, 0.62);
-    box-shadow:
-      0 0 0 1px rgba(168, 199, 250, 0.45),
-      0 0 20px rgba(138, 180, 248, 0.36),
-      0 0 42px rgba(255, 183, 132, 0.22),
-      inset 0 1px 0 rgba(255, 255, 255, 0.24);
-  }
-  50% {
-    border-color: rgba(255, 183, 132, 0.68);
-    box-shadow:
-      0 0 0 1px rgba(255, 183, 132, 0.50),
-      0 0 24px rgba(195, 155, 255, 0.40),
-      0 0 48px rgba(138, 180, 248, 0.28),
-      inset 0 1px 0 rgba(255, 255, 255, 0.30);
-  }
-}
+/* ==========================================================================
+   5. Thoroughly Hide Mobile Zero-State Suggestions (Keep Logo + Greeting + Input)
+   ========================================================================== */
 
-body.mod-ambient-glow input-area-v2,
-body.mod-ambient-glow :not(input-area-v2) > .text-input-field,
-html.mod-ambient-glow input-area-v2,
-html.mod-ambient-glow :not(input-area-v2) > .text-input-field {
-  animation: modUiAmbientGlow 4.5s ease-in-out infinite !important;
-}
-
-/* 6. Optional Feature: Hide Suggestion Prompts on Home Screen */
+body.mod-hide-suggestions .mod-ui-hidden-suggestion,
+body.mod-hide-suggestions zero-state-suggestions,
+body.mod-hide-suggestions suggestion-chips,
 body.mod-hide-suggestions modular-zero-state-chips,
-body.mod-hide-suggestions zero-state-v2 .suggestion-chips,
+body.mod-hide-suggestions suggested-prompts,
+body.mod-hide-suggestions zero-state-cards,
+body.mod-hide-suggestions intent-card,
+body.mod-hide-suggestions .zero-state-suggestions,
 body.mod-hide-suggestions .suggestion-chips,
 body.mod-hide-suggestions .suggestion-chips-container,
 body.mod-hide-suggestions .suggested-prompts-container,
@@ -239,12 +402,28 @@ body.mod-hide-suggestions .zero-state-cards,
 body.mod-hide-suggestions .card-carousel,
 body.mod-hide-suggestions .starter-prompts,
 body.mod-hide-suggestions .intent-card-container,
+body.mod-hide-suggestions .suggestions-container,
+body.mod-hide-suggestions .chips-container,
+body.mod-hide-suggestions .zero-state-prompts,
 body.mod-hide-suggestions [data-test-id="zero-state-suggestions"],
 body.mod-hide-suggestions [data-test-id="suggested-prompts"],
-html.mod-hide-suggestions modular-zero-state-chips,
-html.mod-hide-suggestions .suggestion-chips-container,
-html.mod-hide-suggestions .suggested-prompts-container,
-html.mod-hide-suggestions .zero-state-cards,
-html.mod-hide-suggestions .card-carousel {
+body.mod-hide-suggestions [data-test-id*="suggestion-chip"],
+body.mod-hide-suggestions [data-test-id*="zero-state-chip"],
+body.mod-hide-suggestions [data-test-id*="starter-prompt"] {
   display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Center greeting cleanly when suggestions are hidden */
+body.mod-hide-suggestions zero-state-v2,
+body.mod-hide-suggestions modular-zero-state,
+body.mod-hide-suggestions .zero-state-container {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
 }

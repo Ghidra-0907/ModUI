@@ -19,6 +19,7 @@ import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -36,6 +37,8 @@ import coil.load
 import coil.request.CachePolicy
 import com.modui.gemini.databinding.ActivityGeminiLauncherBinding
 import java.io.File
+import java.io.FileInputStream
+import java.util.Locale
 
 class GeminiLauncherActivity : AppCompatActivity() {
 
@@ -430,6 +433,20 @@ class GeminiLauncherActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): WebResourceResponse? {
+                val uri = request?.url
+                if (uri != null &&
+                    uri.host.equals("gemini.google.com", ignoreCase = true) &&
+                    uri.path == VIRTUAL_BG_PATH
+                ) {
+                    return serveLocalBackgroundResponse()
+                }
+                return super.shouldInterceptRequest(view, request)
+            }
+
             override fun shouldOverrideUrlLoading(
                 view: WebView?,
                 request: WebResourceRequest?
@@ -558,6 +575,98 @@ class GeminiLauncherActivity : AppCompatActivity() {
         }
     }
 
+    private fun isUsingNativeVideo(): Boolean {
+        if (!prefManager.isModEnabled || prefManager.bgType != BgType.VIDEO) return false
+        if (prefManager.bgSource != BgSource.CUSTOM) return false
+        val videoFile = prefManager.getAnimatedVideoFile()
+        return videoFile.exists() && videoFile.length() > 0L
+    }
+
+    private fun buildBgCacheToken(): String {
+        return "${prefManager.bgType.name}_${prefManager.bgSource.name}_${prefManager.selectedPresetId}_${prefManager.customMediaVersion}"
+    }
+
+    private fun serveLocalBackgroundResponse(): WebResourceResponse? {
+        return runCatching {
+            val headers = mapOf(
+                "Cache-Control" to "no-store, no-cache, must-revalidate",
+                "Access-Control-Allow-Origin" to "*"
+            )
+
+            when (prefManager.bgType) {
+                BgType.GIF -> {
+                    val customGif = prefManager.getAnimatedGifFile()
+                    if (prefManager.bgSource == BgSource.CUSTOM && customGif.exists() && customGif.length() > 0L) {
+                        WebResourceResponse("image/gif", null, 200, "OK", headers, FileInputStream(customGif))
+                    } else {
+                        val preset = prefManager.getSelectedPreset()
+                            ?.takeIf { it.type == BgType.GIF }
+                            ?: PrefManager.ANIMATED_PRESETS.first()
+                        val stream = assets.open("presets/${preset.assetFileName}")
+                        WebResourceResponse("image/gif", null, 200, "OK", headers, stream)
+                    }
+                }
+
+                BgType.STATIC, BgType.VIDEO -> {
+                    val customStatic = prefManager.getStaticBgFile()
+                    if (prefManager.bgType == BgType.STATIC &&
+                        prefManager.bgSource == BgSource.CUSTOM &&
+                        customStatic.exists() &&
+                        customStatic.length() > 0L
+                    ) {
+                        val mime = detectImageMimeType(customStatic)
+                        WebResourceResponse(mime, null, 200, "OK", headers, FileInputStream(customStatic))
+                    } else {
+                        val preset = prefManager.getSelectedPreset()
+                            ?.takeIf { it.type == BgType.STATIC }
+                            ?: PrefManager.STATIC_PRESETS.first()
+                        val stream = assets.open("presets/${preset.assetFileName}")
+                        val mime = if (preset.assetFileName.endsWith(".png", ignoreCase = true)) {
+                            "image/png"
+                        } else {
+                            "image/jpeg"
+                        }
+                        WebResourceResponse(mime, null, 200, "OK", headers, stream)
+                    }
+                }
+            }
+        }.getOrNull()
+    }
+
+    private fun detectImageMimeType(file: File): String {
+        return runCatching {
+            val header = ByteArray(12)
+            val read = FileInputStream(file).use { it.read(header) }
+            if (read >= 8 &&
+                header[0] == 0x89.toByte() &&
+                header[1] == 0x50.toByte() &&
+                header[2] == 0x4E.toByte() &&
+                header[3] == 0x47.toByte()
+            ) {
+                "image/png"
+            } else if (read >= 6 &&
+                header[0] == 0x47.toByte() &&
+                header[1] == 0x49.toByte() &&
+                header[2] == 0x46.toByte()
+            ) {
+                "image/gif"
+            } else if (read >= 12 &&
+                header[0] == 0x52.toByte() &&
+                header[1] == 0x49.toByte() &&
+                header[2] == 0x46.toByte() &&
+                header[3] == 0x46.toByte() &&
+                header[8] == 0x57.toByte() &&
+                header[9] == 0x45.toByte() &&
+                header[10] == 0x42.toByte() &&
+                header[11] == 0x50.toByte()
+            ) {
+                "image/webp"
+            } else {
+                "image/jpeg"
+            }
+        }.getOrDefault("image/jpeg")
+    }
+
     private fun injectOrClearModUi(webView: WebView?, url: String?) {
         webView ?: return
         if (!isGeminiHost(url)) return
@@ -571,8 +680,16 @@ class GeminiLauncherActivity : AppCompatActivity() {
         }
 
         val blurPx = prefManager.glassBlurPx
+        val overlayDim = String.format(Locale.US, "%.2f", prefManager.overlayDimPercent / 100.0)
         val ambientGlow = prefManager.isAmbientGlowEnabled
         val hideSuggestions = prefManager.isHideSuggestionsEnabled
+        val nativeVideo = isUsingNativeVideo()
+        val bgMode = if (nativeVideo) "NATIVE_VIDEO" else "WEBVIEW_BG"
+        val bgUrl = if (nativeVideo) {
+            ""
+        } else {
+            "https://gemini.google.com$VIRTUAL_BG_PATH?v=${buildBgCacheToken()}"
+        }
 
         val injectionJs = """
             (function() {
@@ -598,8 +715,11 @@ class GeminiLauncherActivity : AppCompatActivity() {
               }
               window.__MOD_UI_CONFIG__ = {
                 blurPx: $blurPx,
+                overlayDim: $overlayDim,
                 ambientGlow: $ambientGlow,
-                hideSuggestions: $hideSuggestions
+                hideSuggestions: $hideSuggestions,
+                bgMode: '$bgMode',
+                bgUrl: '$bgUrl'
               };
             })();
             $modScriptRaw
@@ -613,5 +733,6 @@ class GeminiLauncherActivity : AppCompatActivity() {
 
     companion object {
         private const val GEMINI_APP_URL = "https://gemini.google.com/app"
+        private const val VIRTUAL_BG_PATH = "/__modui_bg__"
     }
 }

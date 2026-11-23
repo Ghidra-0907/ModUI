@@ -152,7 +152,7 @@ class PrefManager(context: Context) {
         private const val KEY_LAST_CUSTOM_ANIMATED_TYPE = "last_custom_animated_type"
         private const val KEY_CUSTOM_MEDIA_VERSION = "custom_media_version"
 
-        const val DEFAULT_GLASS_BLUR = 16
+        const val DEFAULT_GLASS_BLUR = 20
         const val DEFAULT_OVERLAY_DIM = 35
 
         const val FILE_STATIC_BG = "bg_static.jpg"
