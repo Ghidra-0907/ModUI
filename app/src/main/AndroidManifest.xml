@@ -34,7 +34,7 @@
 
         <activity
             android:name=".GeminiLauncherActivity"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode"
+            android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|smallestScreenSize|uiMode"
             android:exported="true"
             android:hardwareAccelerated="true"
             android:icon="@mipmap/ic_gemini_shortcut"

@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Base64
+import android.view.MotionEvent
 import android.view.Surface
 import android.view.TextureView
 import android.view.View
@@ -141,21 +142,40 @@ class GeminiLauncherActivity : AppCompatActivity() {
     }
 
     private fun applySystemInsets() {
+        // Ensure background layers never steal touch/keyboard focus from WebView
+        binding.ivBackground.isFocusable = false
+        binding.ivBackground.isFocusableInTouchMode = false
+        binding.tvVideoBackground.isFocusable = false
+        binding.tvVideoBackground.isFocusableInTouchMode = false
+        binding.viewDimOverlay.isFocusable = false
+        binding.viewDimOverlay.isFocusableInTouchMode = false
+
         ViewCompat.setOnApplyWindowInsetsListener(binding.launcherRoot) { _, insets ->
             val sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val bottomInset = maxOf(sysBars.bottom, ime.bottom)
 
-            // Background ImageView / TextureView / DimOverlay stay 100% edge-to-edge;
-            // only the WebView container respects system bars & keyboard IME.
-            binding.webViewContainer.updatePadding(
-                left = sysBars.left,
-                top = sysBars.top,
-                right = sysBars.right,
-                bottom = bottomInset
-            )
-            binding.progressBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                topMargin = sysBars.top
+            // Only update padding/margins when changed to avoid redundant relayouts
+            // that can interrupt WebView IME focus while the keyboard opens.
+            val container = binding.webViewContainer
+            if (container.paddingLeft != sysBars.left ||
+                container.paddingTop != sysBars.top ||
+                container.paddingRight != sysBars.right ||
+                container.paddingBottom != bottomInset
+            ) {
+                container.updatePadding(
+                    left = sysBars.left,
+                    top = sysBars.top,
+                    right = sysBars.right,
+                    bottom = bottomInset
+                )
+            }
+
+            val pbLp = binding.progressBar.layoutParams as? ViewGroup.MarginLayoutParams
+            if (pbLp != null && pbLp.topMargin != sysBars.top) {
+                binding.progressBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    topMargin = sysBars.top
+                }
             }
             insets
         }
@@ -404,9 +424,21 @@ class GeminiLauncherActivity : AppCompatActivity() {
     // Top Layer: Transparent Hardware-Accelerated WebView for Google Gemini
     // -------------------------------------------------------------------------
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
     private fun setupWebView() {
         val webView = binding.webView
+
+        // Keep WebView focusable in touch mode so soft keyboard never auto-dismisses
+        webView.isFocusable = true
+        webView.isFocusableInTouchMode = true
+        webView.requestFocus(View.FOCUS_DOWN)
+        webView.setOnTouchListener { v, event ->
+            if ((event.action == MotionEvent.ACTION_DOWN || event.action == MotionEvent.ACTION_UP) && !v.hasFocus()) {
+                v.requestFocus()
+            }
+            false
+        }
+
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
         cookieManager.setAcceptThirdPartyCookies(webView, true)

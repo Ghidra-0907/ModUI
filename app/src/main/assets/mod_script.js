@@ -29,9 +29,6 @@
   ];
 
   var INNER_INPUT_SELECTORS = [
-    'rich-textarea',
-    '.ql-container',
-    '.ql-editor',
     '.text-input-field',
     '.text-input-field-with-images',
     '.text-input-field_textarea-wrapper',
@@ -40,6 +37,16 @@
     '.input-area',
     '.input-area-with-dictation'
   ];
+
+  function isEditorFocused() {
+    var active = document.activeElement;
+    if (!active) return false;
+    var tag = active.tagName ? active.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea') return true;
+    if (active.isContentEditable) return true;
+    if (active.closest && active.closest('rich-textarea, .ql-editor')) return true;
+    return false;
+  }
 
   var DIRECT_SUGGESTION_SELECTORS = [
     'zero-state-suggestions',
@@ -431,10 +438,13 @@
 
     var observer = new MutationObserver(function () {
       if (!window.__MOD_UI_ACTIVE__ || rafScheduled) return;
+      // Do not mutate DOM/styles while user is focusing or typing in the prompt box
+      // so Android WebView IME never blurs and auto-dismisses the soft keyboard.
+      if (isEditorFocused()) return;
       rafScheduled = true;
       window.requestAnimationFrame(function () {
         rafScheduled = false;
-        if (window.__MOD_UI_CONFIG__) {
+        if (window.__MOD_UI_CONFIG__ && !isEditorFocused()) {
           applyConfig(window.__MOD_UI_CONFIG__);
         }
       });
